@@ -64,7 +64,8 @@ Always be polite, professional, and helpful in your responses.""",
             ],
             "system_prompt": "",
             "max_tokens": 4000,
-            "temperature": 0.7
+            "temperature": 0.7,
+            "conversation_memory": 5
         }
         
         if os.path.exists(self.config_file):
@@ -110,13 +111,16 @@ Please follow these instructions carefully and embody the role described above."
         try:
             cmd = [self.claude_cli_path, "--print"]
             
+            # Build conversation context
+            full_message = self.build_conversation_context(message)
+            
             # Add system prompt if enabled
             if use_system_prompt:
                 system_prompt = self.get_system_prompt()
                 cmd.extend(["--append-system-prompt", system_prompt])
             
-            # Add the user message
-            cmd.append(message)
+            # Add the full message with context
+            cmd.append(full_message)
             
             print(f"Sending to Claude: {message[:100]}{'...' if len(message) > 100 else ''}")
             
@@ -140,6 +144,29 @@ Please follow these instructions carefully and embody the role described above."
             return "Error: Claude CLI request timed out"
         except Exception as e:
             return f"Error communicating with Claude CLI: {str(e)}"
+    
+    def build_conversation_context(self, current_message, max_history=None):
+        """Build conversation context including recent history"""
+        if not self.conversation_history:
+            return current_message
+        
+        # Use config setting or default
+        if max_history is None:
+            max_history = self.config.get('conversation_memory', 5)
+        
+        # Get recent conversation history (last max_history exchanges)
+        recent_history = self.conversation_history[-max_history:]
+        
+        context_parts = ["Previous conversation:"]
+        
+        for exchange in recent_history:
+            context_parts.append(f"Human: {exchange['user']}")
+            context_parts.append(f"Assistant: {exchange['assistant']}")
+        
+        context_parts.append("\nCurrent message:")
+        context_parts.append(f"Human: {current_message}")
+        
+        return "\n".join(context_parts)
     
     def start_conversation(self):
         """Start an interactive conversation"""
@@ -196,11 +223,12 @@ Please follow these instructions carefully and embody the role described above."
             print("3. Edit instructions")
             print("4. View/edit conversation starters")
             print("5. View current configuration")
-            print("6. Save configuration")
-            print("7. Save configuration as...")
-            print("8. Load configuration")
-            print("9. Configuration library")
-            print("10. Export/Import")
+            print("6. Edit conversation memory")
+            print("7. Save configuration")
+            print("8. Save configuration as...")
+            print("9. Load configuration")
+            print("10. Configuration library")
+            print("11. Export/Import")
             print("0. Return to conversation")
             
             choice = input("\nChoose option: ").strip()
@@ -244,18 +272,21 @@ Please follow these instructions carefully and embody the role described above."
                 self.view_current_config()
             
             elif choice == "6":
-                self.save_config()
+                self.edit_conversation_memory()
             
             elif choice == "7":
-                self.save_config_as()
+                self.save_config()
             
             elif choice == "8":
-                self.load_config_menu()
+                self.save_config_as()
             
             elif choice == "9":
-                self.config_library_menu()
+                self.load_config_menu()
             
             elif choice == "10":
+                self.config_library_menu()
+            
+            elif choice == "11":
                 self.import_export_menu()
             
             elif choice == "0":
@@ -323,8 +354,30 @@ Please follow these instructions carefully and embody the role described above."
         print(f"\nConversation Starters ({len(self.config['conversation_starters'])}):")
         for i, starter in enumerate(self.config['conversation_starters'], 1):
             print(f"  {i}. {starter}")
+        print(f"\nConversation Memory: {self.config.get('conversation_memory', 5)} previous exchanges")
         print("=" * 50)
         input("Press Enter to continue...")
+    
+    def edit_conversation_memory(self):
+        """Edit conversation memory setting"""
+        current = self.config.get('conversation_memory', 5)
+        print(f"\nCurrent conversation memory: {current} previous exchanges")
+        print("This controls how many previous exchanges are included for context.")
+        print("Range: 0-20 (0 = no memory, 20 = maximum context)")
+        
+        try:
+            new_value = input(f"Enter new value [{current}]: ").strip()
+            if new_value:
+                memory_size = int(new_value)
+                if 0 <= memory_size <= 20:
+                    self.config['conversation_memory'] = memory_size
+                    print(f"Conversation memory updated to {memory_size}")
+                else:
+                    print("Value must be between 0 and 20!")
+            else:
+                print("No changes made.")
+        except ValueError:
+            print("Please enter a valid number!")
     
     def save_config_as(self):
         """Save configuration with a new name"""
