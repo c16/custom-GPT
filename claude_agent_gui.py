@@ -93,7 +93,7 @@ class ClaudeAgentGUI:
                                    relief=tk.FLAT, borderwidth=0, bg='#34495e', fg='#ecf0f1',
                                    cursor='arrow', insertbackground='#34495e', highlightthickness=0,
                                    exportselection=False, selectbackground='#34495e', selectforeground='#ecf0f1',
-                                   font=('Arial', 12), spacing1=0, spacing2=0, spacing3=0,
+                                   font=('Arial', 12), spacing1=0, spacing2=0, spacing3=12,
                                    insertwidth=0, insertofftime=0, insertontime=0)
 
         scrollbar = tk.Scrollbar(text_scroll_frame, orient=tk.VERTICAL, command=self.chat_display.yview, bg='#2c3e50', troughcolor='#34495e', activebackground='#3498db')
@@ -159,16 +159,28 @@ class ClaudeAgentGUI:
         # return text.replace('\n\n', '  ')
 
         # Option 6: Use newline + invisible Unicode space + newline
-        #return text.replace('\n\n', '\n\u00A0\n')  # Non-breaking space
+        # return text.replace('\n\n', '\n\u00A0\n')  # Non-breaking space
 
         # Option 7: Use newline + dot + newline (minimal visual)
-        return text.replace('\n\n', '\n.\n')
+        # return text.replace('\n\n', '\n.\n')
 
         # Option 8: Use newline + multiple spaces + newline
-        #return text.replace('\n\n', '\n    \n')
+        # return text.replace('\n\n', '\n    \n')
 
         # Option 9: Use newline + tab + newline
-        #return text.replace('\n\n', '\n\t\n')
+        # return text.replace('\n\n', '\n\t\n')
+
+        # Option 10: Use Unicode thin space (less visible than regular space)
+        # return text.replace('\n\n', '\n\u2009\n')  # Thin space
+
+        # Option 11: Use zero-width joiner (invisible)
+        # return text.replace('\n\n', '\n\u200D\n')  # Zero-width joiner
+
+        # Option 12: Use hair space (ultra-thin)
+        return text.replace('\n\n', '\n\u200A\n')  # Hair space
+
+        # Option 13: Use figure space (same width as a digit)
+        # return text.replace('\n\n', '\n\u2007\n')  # Figure space
 
     def add_message(self, sender, message):
         """Add a message to the chat display"""
@@ -177,7 +189,7 @@ class ClaudeAgentGUI:
 
         # Clean and fix problematic newlines
         clean_message = message.replace('\r\n', '\n').replace('\r', '\n').strip()
-        clean_message = self.fix_double_newlines(clean_message)
+        #clean_message = self.fix_double_newlines(clean_message)
 
         self.chat_display.insert(tk.END, f"[{timestamp}] {sender}: {clean_message}\n")
         self.chat_display.config(state=tk.DISABLED)
