@@ -12,12 +12,13 @@ import time
 from pathlib import Path
 
 class ClaudeAgent:
-    def __init__(self, config_file="agent_config.json"):
+    def __init__(self, config_file="agent_config.json", cli_provider="auto"):
         self.config_file = config_file
         self.last_config_file = ".last_config"  # File to store last used config path
+        self.cli_provider = cli_provider  # "claude", "gemini", or "auto"
         self.config = self.load_config()
         self.conversation_history = []
-        self.claude_cli_path = self.find_claude_cli()
+        self.cli_path, self.active_provider = self.find_available_cli()
         
     def find_claude_cli(self):
         """Find the Claude CLI executable"""
@@ -29,19 +30,69 @@ class ClaudeAgent:
             "npx claude",
             "yarn claude"
         ]
-        
+
         for path in possible_paths:
             try:
-                result = subprocess.run([path, "--version"], 
+                result = subprocess.run([path, "--version"],
                                       capture_output=True, text=True, timeout=5)
                 if result.returncode == 0:
-                    print(f"Found Claude CLI at: {path}")
                     return path
             except (subprocess.TimeoutExpired, FileNotFoundError):
                 continue
-        
-        print("Claude CLI not found. Please ensure it's installed and in your PATH.")
         return None
+
+    def find_gemini_cli(self):
+        """Find the Gemini CLI executable"""
+        possible_paths = [
+            "gemini",
+            "/usr/local/bin/gemini",
+            "/usr/bin/gemini",
+            os.path.expanduser("~/.local/bin/gemini"),
+            "npx gemini",
+            "yarn gemini"
+        ]
+
+        for path in possible_paths:
+            try:
+                result = subprocess.run([path, "--version"],
+                                      capture_output=True, text=True, timeout=5)
+                if result.returncode == 0:
+                    return path
+            except (subprocess.TimeoutExpired, FileNotFoundError):
+                continue
+        return None
+
+    def find_available_cli(self):
+        """Find available CLI based on preference"""
+        claude_path = self.find_claude_cli()
+        gemini_path = self.find_gemini_cli()
+
+        if self.cli_provider == "claude":
+            if claude_path:
+                print(f"Found Claude CLI at: {claude_path}")
+                return claude_path, "claude"
+            else:
+                print("Claude CLI not found but was specifically requested.")
+                return None, None
+
+        elif self.cli_provider == "gemini":
+            if gemini_path:
+                print(f"Found Gemini CLI at: {gemini_path}")
+                return gemini_path, "gemini"
+            else:
+                print("Gemini CLI not found but was specifically requested.")
+                return None, None
+
+        else:  # auto mode
+            if claude_path:
+                print(f"Found Claude CLI at: {claude_path}")
+                return claude_path, "claude"
+            elif gemini_path:
+                print(f"Found Gemini CLI at: {gemini_path}")
+                return gemini_path, "gemini"
+            else:
+                print("Neither Claude nor Gemini CLI found. Please ensure one is installed.")
+                return None, None
     
     def save_last_config_path(self, config_path):
         """Save the path of the last used configuration"""
@@ -152,26 +203,45 @@ Please follow these instructions carefully and embody the role described above."
         
         return system_prompt
     
-    def send_to_claude(self, message, use_system_prompt=True):
-        """Send message to Claude CLI and get response"""
-        if not self.claude_cli_path:
-            return "Error: Claude CLI not available"
+    def send_to_cli(self, message, use_system_prompt=True):
+        """Send message to the active CLI (Claude or Gemini) and get response"""
+        if not self.cli_path:
+            return f"Error: {self.active_provider or 'CLI'} not available"
         
         try:
-            cmd = [self.claude_cli_path, "--print"]
-            
-            # Build conversation context
-            full_message = self.build_conversation_context(message)
-            
-            # Add system prompt if enabled
-            if use_system_prompt:
-                system_prompt = self.get_system_prompt()
-                cmd.extend(["--append-system-prompt", system_prompt])
-            
-            # Add the full message with context
-            cmd.append(full_message)
-            
-            print(f"Sending to Claude: {message[:100]}{'...' if len(message) > 100 else ''}")
+            # Build command based on active provider
+            if self.active_provider == "claude":
+                cmd = [self.cli_path, "--print"]
+
+                # Build conversation context
+                full_message = self.build_conversation_context(message)
+
+                # Add system prompt if enabled
+                if use_system_prompt:
+                    system_prompt = self.get_system_prompt()
+                    cmd.extend(["--append-system-prompt", system_prompt])
+
+                # Add the full message with context
+                cmd.append(full_message)
+
+            elif self.active_provider == "gemini":
+                cmd = [self.cli_path]
+
+                # Build conversation context (may need different format for Gemini)
+                full_message = self.build_conversation_context(message)
+
+                # Add system prompt if enabled (Gemini CLI syntax may differ)
+                if use_system_prompt:
+                    system_prompt = self.get_system_prompt()
+                    cmd.extend(["--system", system_prompt])
+
+                # Add the message
+                cmd.append(full_message)
+
+            else:
+                return f"Error: Unknown CLI provider: {self.active_provider}"
+
+            print(f"Sending to {self.active_provider.title()}: {message[:100]}{'...' if len(message) > 100 else ''}")
             
             # Execute Claude CLI command
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
@@ -190,9 +260,19 @@ Please follow these instructions carefully and embody the role described above."
                 return f"Error from Claude CLI: {error_msg}"
                 
         except subprocess.TimeoutExpired:
-            return "Error: Claude CLI request timed out"
+            return f"Error: {self.active_provider} CLI request timed out"
         except Exception as e:
-            return f"Error communicating with Claude CLI: {str(e)}"
+            return f"Error communicating with {self.active_provider} CLI: {str(e)}"
+
+    def send_to_claude(self, message, use_system_prompt=True):
+        """Backward compatibility wrapper for send_to_cli"""
+        return self.send_to_cli(message, use_system_prompt)
+
+    def switch_cli_provider(self, new_provider):
+        """Switch to a different CLI provider"""
+        self.cli_provider = new_provider
+        self.cli_path, self.active_provider = self.find_available_cli()
+        return self.cli_path is not None
     
     def build_conversation_context(self, current_message, max_history=None):
         """Build conversation context including recent history"""

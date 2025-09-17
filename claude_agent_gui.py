@@ -61,13 +61,21 @@ class ClaudeAgentGUI:
         self.name_label = ttk.Label(header_frame, text=self.agent.config['name'], font=("Arial", 16, "bold"))
         self.name_label.grid(row=0, column=0, sticky=tk.W)
 
-        ttk.Button(header_frame, text="Config", command=self.open_config_window).grid(row=0, column=2, padx=5)
-        ttk.Button(header_frame, text="Library", command=self.open_config_library).grid(row=0, column=3, padx=5)
-        ttk.Button(header_frame, text="Copy All", command=self.copy_chat_to_clipboard).grid(row=0, column=4, padx=5)
-        ttk.Button(header_frame, text="Clear", command=self.clear_chat).grid(row=0, column=5, padx=5)
+        # CLI Provider selection
+        ttk.Label(header_frame, text="CLI:").grid(row=0, column=2, padx=(10, 5))
+        self.cli_var = tk.StringVar(value=self.agent.active_provider or "auto")
+        cli_combo = ttk.Combobox(header_frame, textvariable=self.cli_var, values=["auto", "claude", "gemini"],
+                                width=8, state="readonly")
+        cli_combo.grid(row=0, column=3, padx=5)
+        cli_combo.bind("<<ComboboxSelected>>", self.on_cli_change)
+
+        ttk.Button(header_frame, text="Config", command=self.open_config_window).grid(row=0, column=4, padx=5)
+        ttk.Button(header_frame, text="Library", command=self.open_config_library).grid(row=0, column=5, padx=5)
+        ttk.Button(header_frame, text="Copy All", command=self.copy_chat_to_clipboard).grid(row=0, column=6, padx=5)
+        ttk.Button(header_frame, text="Clear", command=self.clear_chat).grid(row=0, column=7, padx=5)
 
         self.description_label = ttk.Label(header_frame, text=self.agent.config['description'], wraplength=500)
-        self.description_label.grid(row=1, column=0, columnspan=4, sticky=(tk.W, tk.E), pady=5)
+        self.description_label.grid(row=1, column=0, columnspan=6, sticky=(tk.W, tk.E), pady=5)
         
         # Chat area
         chat_frame = ttk.Frame(main_frame)
@@ -179,7 +187,28 @@ class ClaudeAgentGUI:
         """Update header labels with current config info"""
         self.name_label.config(text=self.agent.config['name'])
         self.description_label.config(text=self.agent.config['description'])
-        self.root.title(f"{self.agent.config['name']} - Claude CLI Agent")
+        provider_name = self.agent.active_provider or "CLI"
+        self.root.title(f"{self.agent.config['name']} - {provider_name.title()} Agent")
+
+    def on_cli_change(self, event=None):
+        """Handle CLI provider change"""
+        new_provider = self.cli_var.get()
+        old_provider = self.agent.active_provider
+
+        # Try to switch CLI provider
+        success = self.agent.switch_cli_provider(new_provider)
+
+        # Update header to reflect new provider
+        self.update_header()
+
+        # Show status message
+        if success:
+            provider_name = self.agent.active_provider.title()
+            self.add_message("System", f"Switched to {provider_name} CLI")
+        else:
+            self.add_message("System", f"Warning: {new_provider.title()} CLI not found")
+            # Revert to previous working provider
+            self.cli_var.set(old_provider or "auto")
 
     def refresh_conversation_starters(self):
         """Refresh conversation starter buttons based on current config"""
