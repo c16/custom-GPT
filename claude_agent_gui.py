@@ -35,10 +35,16 @@ class ClaudeAgentGUI:
         """Setup the tkinter GUI"""
         self.root = tk.Tk()
         self.root.title(f"{self.agent.config['name']} - Claude CLI Agent")
-        self.root.geometry("800x600")
+        self.root.geometry("1600x1200")
         
         # Main frame
-        main_frame = ttk.Frame(self.root, padding="10")
+        # Configure colorful modern theme
+        self.root.configure(bg='#2c3e50')
+
+        # Create styled frame with background
+        style = ttk.Style()
+        style.configure('Custom.TFrame', background='#34495e')
+        main_frame = ttk.Frame(self.root, padding="20", style='Custom.TFrame')
         main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
         
         self.root.columnconfigure(0, weight=1)
@@ -51,12 +57,17 @@ class ClaudeAgentGUI:
         header_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
         header_frame.columnconfigure(1, weight=1)
         
-        ttk.Label(header_frame, text=self.agent.config['name'], font=("Arial", 16, "bold")).grid(row=0, column=0, sticky=tk.W)
+        # Store references to header labels for dynamic updates
+        self.name_label = ttk.Label(header_frame, text=self.agent.config['name'], font=("Arial", 16, "bold"))
+        self.name_label.grid(row=0, column=0, sticky=tk.W)
+
         ttk.Button(header_frame, text="Config", command=self.open_config_window).grid(row=0, column=2, padx=5)
         ttk.Button(header_frame, text="Library", command=self.open_config_library).grid(row=0, column=3, padx=5)
-        ttk.Button(header_frame, text="Clear", command=self.clear_chat).grid(row=0, column=4, padx=5)
-        
-        ttk.Label(header_frame, text=self.agent.config['description'], wraplength=500).grid(row=1, column=0, columnspan=4, sticky=(tk.W, tk.E), pady=5)
+        ttk.Button(header_frame, text="Copy All", command=self.copy_chat_to_clipboard).grid(row=0, column=4, padx=5)
+        ttk.Button(header_frame, text="Clear", command=self.clear_chat).grid(row=0, column=5, padx=5)
+
+        self.description_label = ttk.Label(header_frame, text=self.agent.config['description'], wraplength=500)
+        self.description_label.grid(row=1, column=0, columnspan=4, sticky=(tk.W, tk.E), pady=5)
         
         # Chat area
         chat_frame = ttk.Frame(main_frame)
@@ -64,15 +75,39 @@ class ClaudeAgentGUI:
         chat_frame.columnconfigure(0, weight=1)
         chat_frame.rowconfigure(0, weight=1)
         
-        self.chat_display = scrolledtext.ScrolledText(chat_frame, wrap=tk.WORD, state=tk.DISABLED)
+        # Create text widget with custom scrollbar to avoid ScrolledText issues
+        text_scroll_frame = tk.Frame(chat_frame, bg='#34495e')
+        text_scroll_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        text_scroll_frame.grid_rowconfigure(0, weight=1)
+        text_scroll_frame.grid_columnconfigure(0, weight=1)
+
+        self.chat_display = tk.Text(text_scroll_frame, wrap=tk.WORD, state=tk.DISABLED,
+                                   relief=tk.FLAT, borderwidth=0, bg='#34495e', fg='#ecf0f1',
+                                   cursor='arrow', insertbackground='#34495e', highlightthickness=0,
+                                   exportselection=False, selectbackground='#34495e', selectforeground='#ecf0f1',
+                                   font=('Arial', 12), spacing1=0, spacing2=0, spacing3=0,
+                                   insertwidth=0, insertofftime=0, insertontime=0)
+
+        scrollbar = tk.Scrollbar(text_scroll_frame, orient=tk.VERTICAL, command=self.chat_display.yview, bg='#2c3e50', troughcolor='#34495e', activebackground='#3498db')
+        self.chat_display.configure(yscrollcommand=scrollbar.set)
+
         self.chat_display.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        scrollbar.grid(row=0, column=1, sticky=(tk.N, tk.S))
+
+        # Prevent focus and cursor positioning completely
+        self.chat_display.bind('<Button-1>', lambda e: 'break')
+        self.chat_display.bind('<B1-Motion>', lambda e: 'break')
+        self.chat_display.bind('<Double-Button-1>', lambda e: 'break')
+        self.chat_display.bind('<Triple-Button-1>', lambda e: 'break')
+        self.chat_display.bind('<Key>', lambda e: 'break')
+        self.chat_display.bind('<FocusIn>', lambda e: 'break')
         
         # Input area
         input_frame = ttk.Frame(main_frame)
         input_frame.grid(row=2, column=0, sticky=(tk.W, tk.E))
         input_frame.columnconfigure(0, weight=1)
         
-        self.input_text = tk.Text(input_frame, height=3, wrap=tk.WORD)
+        self.input_text = tk.Text(input_frame, height=6, wrap=tk.WORD, bg='#ecf0f1', fg='#2c3e50', relief=tk.SUNKEN, borderwidth=2, highlightthickness=2, highlightcolor='#e74c3c', highlightbackground='#bdc3c7', insertbackground='#e74c3c')
         self.input_text.grid(row=0, column=0, sticky=(tk.W, tk.E), padx=(0, 5))
         
         button_frame = ttk.Frame(input_frame)
@@ -81,17 +116,19 @@ class ClaudeAgentGUI:
         ttk.Button(button_frame, text="Send", command=self.send_message).pack(pady=2)
         ttk.Button(button_frame, text="History", command=self.show_history).pack(pady=2)
         
-        # Conversation starters
-        if self.agent.config['conversation_starters']:
-            starters_frame = ttk.LabelFrame(main_frame, text="Conversation Starters", padding="5")
-            starters_frame.grid(row=3, column=0, sticky=(tk.W, tk.E), pady=10)
-            
-            for i, starter in enumerate(self.agent.config['conversation_starters']):
-                ttk.Button(starters_frame, text=starter, 
-                          command=lambda s=starter: self.use_starter(s)).pack(fill=tk.X, pady=2)
+        # Conversation starters frame (store reference for dynamic updates)
+        self.starters_frame = ttk.LabelFrame(main_frame, text="Conversation Starters", padding="5")
+        self.starters_frame.grid(row=3, column=0, sticky=(tk.W, tk.E), pady=10)
+
+        # Build initial conversation starters
+        self.refresh_conversation_starters()
         
         # Bind Enter key
         self.input_text.bind('<Control-Return>', lambda e: self.send_message())
+
+        # Configure text tags properly to prevent rendering issues
+        self.chat_display.tag_configure('sel', background='#34495e', foreground='#ecf0f1')
+        self.chat_display.tag_configure('normal', background='#34495e', foreground='#ecf0f1')
         
         # Welcome message
         self.add_message("System", "Welcome! How can I help you today?")
@@ -99,14 +136,70 @@ class ClaudeAgentGUI:
         # Start checking for responses
         self.root.after(100, self.check_response_queue)
     
+    def fix_double_newlines(self, text):
+        """Fix problematic double newlines - experiment with different approaches here"""
+        # Option 1: Replace with single newline
+        # return text.replace('\n\n', '\n')
+
+        # Option 2: Replace with newline + space + newline (avoid \r)
+        # return text.replace('\n\n', '\n \n')
+
+        # Option 3: Replace with newline + dash + newline
+        # return text.replace('\n\n', '\n---\n')
+
+        # Option 4: Replace with double space on same line
+        # return text.replace('\n\n', '  ')
+
+        # Option 6: Use newline + invisible Unicode space + newline
+        #return text.replace('\n\n', '\n\u00A0\n')  # Non-breaking space
+
+        # Option 7: Use newline + dot + newline (minimal visual)
+        return text.replace('\n\n', '\n.\n')
+
+        # Option 8: Use newline + multiple spaces + newline
+        #return text.replace('\n\n', '\n    \n')
+
+        # Option 9: Use newline + tab + newline
+        #return text.replace('\n\n', '\n\t\n')
+
     def add_message(self, sender, message):
         """Add a message to the chat display"""
         self.chat_display.config(state=tk.NORMAL)
         timestamp = time.strftime("%H:%M:%S")
-        self.chat_display.insert(tk.END, f"[{timestamp}] {sender}: {message}\n\n")
+
+        # Clean and fix problematic newlines
+        clean_message = message.replace('\r\n', '\n').replace('\r', '\n').strip()
+        clean_message = self.fix_double_newlines(clean_message)
+
+        self.chat_display.insert(tk.END, f"[{timestamp}] {sender}: {clean_message}\n")
         self.chat_display.config(state=tk.DISABLED)
         self.chat_display.see(tk.END)
-    
+
+    def update_header(self):
+        """Update header labels with current config info"""
+        self.name_label.config(text=self.agent.config['name'])
+        self.description_label.config(text=self.agent.config['description'])
+        self.root.title(f"{self.agent.config['name']} - Claude CLI Agent")
+
+    def refresh_conversation_starters(self):
+        """Refresh conversation starter buttons based on current config"""
+        # Update header when config changes
+        self.update_header()
+
+        # Clear existing starter buttons
+        for widget in self.starters_frame.winfo_children():
+            widget.destroy()
+
+        # Add new starter buttons if they exist in config
+        if self.agent.config.get('conversation_starters'):
+            for i, starter in enumerate(self.agent.config['conversation_starters']):
+                ttk.Button(self.starters_frame, text=starter,
+                          command=lambda s=starter: self.use_starter(s)).pack(fill=tk.X, pady=2)
+        else:
+            # Show message if no starters available
+            ttk.Label(self.starters_frame, text="No conversation starters available",
+                     foreground='gray').pack(pady=10)
+
     def send_message(self):
         """Send user message to Claude"""
         user_message = self.input_text.get("1.0", tk.END).strip()
@@ -172,6 +265,24 @@ class ClaudeAgentGUI:
         self.chat_display.delete("1.0", tk.END)
         self.chat_display.config(state=tk.DISABLED)
         self.add_message("System", "Chat cleared. How can I help you?")
+
+    def copy_chat_to_clipboard(self):
+        """Copy all chat content to clipboard"""
+        try:
+            # Get all text from the chat display
+            chat_content = self.chat_display.get("1.0", tk.END)
+            # Remove the trailing newline that tk.END includes
+            chat_content = chat_content.rstrip('\n')
+
+            # Copy to clipboard
+            self.root.clipboard_clear()
+            self.root.clipboard_append(chat_content)
+
+            # Show confirmation
+            messagebox.showinfo("Copied", "Chat content copied to clipboard!")
+
+        except Exception as e:
+            messagebox.showerror("Error", f"Error copying to clipboard: {e}")
     
     def show_history(self):
         """Show conversation history in a new window"""
@@ -183,7 +294,7 @@ class ClaudeAgentGUI:
         history_window.title("Conversation History")
         history_window.geometry("600x400")
         
-        history_text = scrolledtext.ScrolledText(history_window, wrap=tk.WORD)
+        history_text = scrolledtext.ScrolledText(history_window, wrap=tk.WORD, relief=tk.SUNKEN, borderwidth=2, bg='#ecf0f1', fg='#2c3e50', selectbackground='#ecf0f1', selectforeground='#2c3e50', highlightthickness=0)
         history_text.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
         
         for entry in self.agent.conversation_history:
@@ -221,7 +332,7 @@ class ClaudeAgentGUI:
         inst_frame = ttk.Frame(notebook, padding="10")
         notebook.add(inst_frame, text="Instructions")
         
-        inst_text = scrolledtext.ScrolledText(inst_frame, wrap=tk.WORD)
+        inst_text = scrolledtext.ScrolledText(inst_frame, wrap=tk.WORD, relief=tk.SUNKEN, borderwidth=2, bg='#ecf0f1', fg='#2c3e50', selectbackground='#ecf0f1', selectforeground='#2c3e50', cursor='arrow', insertbackground='#e74c3c', highlightthickness=0)
         inst_text.pack(fill=tk.BOTH, expand=True)
         inst_text.insert("1.0", self.agent.config['instructions'])
         
@@ -273,7 +384,7 @@ class ClaudeAgentGUI:
                         return
                 
                 self.agent.config = new_config
-                self.root.title(f"{self.agent.config['name']} - Claude CLI Agent")
+                self.refresh_conversation_starters()  # Refresh starters and header for new config
                 parent.destroy()
                 messagebox.showinfo("Success", f"Configuration loaded: {self.agent.config['name']}")
                 
@@ -457,13 +568,13 @@ class ClaudeAgentGUI:
         
         if Path(filename).exists():
             file_path = Path(filename)
-        elif Path("configs") / filename.exists():
+        elif (Path("configs") / filename).exists():
             file_path = Path("configs") / filename
         
         if file_path:
             self.agent.load_specific_config(str(file_path))
-            self.root.title(f"{self.agent.config['name']} - Claude CLI Agent")
             self.current_config_label.config(text=f"Name: {self.agent.config['name']}")
+            self.refresh_conversation_starters()  # Refresh starters and header for new config
             messagebox.showinfo("Success", f"Loaded configuration: {self.agent.config['name']}")
         else:
             messagebox.showerror("Error", "Configuration file not found.")
@@ -498,7 +609,7 @@ class ClaudeAgentGUI:
                 preview_window.title(f"Preview: {config_data.get('name', 'Unknown')}")
                 preview_window.geometry("600x400")
                 
-                text_widget = scrolledtext.ScrolledText(preview_window, wrap=tk.WORD, padx=10, pady=10)
+                text_widget = scrolledtext.ScrolledText(preview_window, wrap=tk.WORD, padx=10, pady=10, relief=tk.SUNKEN, borderwidth=2, bg='#ecf0f1', fg='#2c3e50', selectbackground='#ecf0f1', selectforeground='#2c3e50', highlightthickness=0)
                 text_widget.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
                 
                 content = f"""Name: {config_data.get('name', 'Unknown')}
@@ -603,35 +714,43 @@ Conversation Starters:
             # Create customization dialog
             dialog = tk.Toplevel(self.root)
             dialog.title(f"Create {template_name}")
-            dialog.geometry("500x300")
+            dialog.geometry("600x500")  # Made taller and wider for instructions field
             dialog.transient(self.root)
             dialog.grab_set()
-            
+
             frame = ttk.Frame(dialog, padding="10")
             frame.pack(fill=tk.BOTH, expand=True)
-            
+
             # Name
             ttk.Label(frame, text="Agent Name:").grid(row=0, column=0, sticky=tk.W, pady=5)
             name_var = tk.StringVar(value=template['name'])
             ttk.Entry(frame, textvariable=name_var, width=40).grid(row=0, column=1, sticky=(tk.W, tk.E), pady=5)
-            
+
             # Description
             ttk.Label(frame, text="Description:").grid(row=1, column=0, sticky=(tk.W, tk.N), pady=5)
-            desc_text = tk.Text(frame, height=4, width=40)
+            desc_text = tk.Text(frame, height=3, width=40)
             desc_text.grid(row=1, column=1, sticky=(tk.W, tk.E), pady=5)
             desc_text.insert("1.0", template['description'])
-            
+
+            # Instructions (NEW)
+            ttk.Label(frame, text="Instructions:").grid(row=2, column=0, sticky=(tk.W, tk.N), pady=5)
+            inst_text = scrolledtext.ScrolledText(frame, height=8, width=40, wrap=tk.WORD)
+            inst_text.grid(row=2, column=1, sticky=(tk.W, tk.E, tk.N, tk.S), pady=5)
+            inst_text.insert("1.0", template['instructions'])
+
             # Filename
-            ttk.Label(frame, text="Save as:").grid(row=2, column=0, sticky=tk.W, pady=5)
+            ttk.Label(frame, text="Save as:").grid(row=3, column=0, sticky=tk.W, pady=5)
             filename_var = tk.StringVar(value=template['name'].lower().replace(' ', '_'))
-            ttk.Entry(frame, textvariable=filename_var, width=40).grid(row=2, column=1, sticky=(tk.W, tk.E), pady=5)
-            
+            ttk.Entry(frame, textvariable=filename_var, width=40).grid(row=3, column=1, sticky=(tk.W, tk.E), pady=5)
+
             frame.columnconfigure(1, weight=1)
+            frame.rowconfigure(2, weight=1)  # Make instructions row expandable
             
             def create_config():
                 new_config = template.copy()
                 new_config['name'] = name_var.get()
                 new_config['description'] = desc_text.get("1.0", tk.END).strip()
+                new_config['instructions'] = inst_text.get("1.0", tk.END).strip()  # Include instructions
                 
                 filename = filename_var.get()
                 if filename:
@@ -640,13 +759,13 @@ Conversation Starters:
                     
                     if messagebox.askyesno("Use Now", "Configuration created! Use it now?"):
                         self.agent.config = new_config
-                        self.root.title(f"{self.agent.config['name']} - Claude CLI Agent")
                         self.current_config_label.config(text=f"Name: {self.agent.config['name']}")
+                        self.refresh_conversation_starters()  # Refresh starters and header for new config
                     
                     self.refresh_config_list()
             
             button_frame = ttk.Frame(frame)
-            button_frame.grid(row=3, column=0, columnspan=2, pady=20)
+            button_frame.grid(row=4, column=0, columnspan=2, pady=20)  # Updated row number
             
             ttk.Button(button_frame, text="Create", command=create_config).pack(side=tk.LEFT, padx=5)
             ttk.Button(button_frame, text="Cancel", command=dialog.destroy).pack(side=tk.LEFT, padx=5)
@@ -755,8 +874,8 @@ Conversation Starters:
                     
                     if messagebox.askyesno("Use Now", "Configuration imported! Use it now?"):
                         self.agent.config = config_data
-                        self.root.title(f"{self.agent.config['name']} - Claude CLI Agent")
                         self.current_config_label.config(text=f"Name: {self.agent.config['name']}")
+                        self.refresh_conversation_starters()  # Refresh starters and header for new config
                         
             except Exception as e:
                 messagebox.showerror("Error", f"Error importing configuration: {e}")
@@ -832,8 +951,8 @@ Conversation Starters:
             }
             
             self.agent.config = default_config
-            self.root.title(f"{self.agent.config['name']} - Claude CLI Agent")
             self.current_config_label.config(text=f"Name: {self.agent.config['name']}")
+            self.refresh_conversation_starters()  # Refresh starters and header for new config
             messagebox.showinfo("Success", "Configuration reset to default")
     
     def run_enhanced_cli(self):

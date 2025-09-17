@@ -14,6 +14,7 @@ from pathlib import Path
 class ClaudeAgent:
     def __init__(self, config_file="agent_config.json"):
         self.config_file = config_file
+        self.last_config_file = ".last_config"  # File to store last used config path
         self.config = self.load_config()
         self.conversation_history = []
         self.claude_cli_path = self.find_claude_cli()
@@ -42,8 +43,56 @@ class ClaudeAgent:
         print("Claude CLI not found. Please ensure it's installed and in your PATH.")
         return None
     
+    def save_last_config_path(self, config_path):
+        """Save the path of the last used configuration"""
+        try:
+            with open(self.last_config_file, 'w') as f:
+                f.write(config_path)
+        except Exception as e:
+            print(f"Error saving last config path: {e}")
+
+    def load_last_config_path(self):
+        """Load the path of the last used configuration"""
+        try:
+            if os.path.exists(self.last_config_file):
+                with open(self.last_config_file, 'r') as f:
+                    return f.read().strip()
+        except Exception as e:
+            print(f"Error loading last config path: {e}")
+        return None
+
+    def load_config_from_file(self, file_path):
+        """Load configuration from a specific file"""
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                config = json.load(f)
+
+            # Validate configuration
+            required_keys = ['name', 'description', 'instructions', 'conversation_starters']
+            for key in required_keys:
+                if key not in config:
+                    print(f"Invalid configuration: missing '{key}' field")
+                    return None
+
+            return config
+        except Exception as e:
+            print(f"Error loading config from {file_path}: {e}")
+            return None
+
     def load_config(self):
         """Load agent configuration from file or create default"""
+        # First try to load the last used config
+        last_config_path = self.load_last_config_path()
+        if last_config_path and os.path.exists(last_config_path):
+            try:
+                config = self.load_config_from_file(last_config_path)
+                if config:
+                    print(f"Loaded last used configuration from {last_config_path}")
+                    return config
+            except Exception as e:
+                print(f"Error loading last config {last_config_path}: {e}")
+
+        # Fall back to default config file or create default
         default_config = {
             "name": "Custom AI Agent",
             "description": "A helpful AI assistant",
@@ -456,23 +505,14 @@ Please follow these instructions carefully and embody the role described above."
     
     def load_specific_config(self, file_path):
         """Load a specific configuration file"""
-        try:
-            with open(file_path, 'r', encoding='utf-8') as f:
-                new_config = json.load(f)
-            
-            # Validate configuration
-            required_keys = ['name', 'description', 'instructions', 'conversation_starters']
-            for key in required_keys:
-                if key not in new_config:
-                    print(f"Invalid configuration: missing '{key}' field")
-                    return
-            
-            self.config = new_config
+        config = self.load_config_from_file(file_path)
+        if config:
+            self.config = config
+            self.save_last_config_path(file_path)  # Save as last used config
             print(f"Configuration loaded from {file_path}")
             print(f"Now using: {self.config['name']}")
-            
-        except Exception as e:
-            print(f"Error loading configuration: {e}")
+        else:
+            print(f"Failed to load configuration from {file_path}")
     
     def config_library_menu(self):
         """Configuration library management"""
