@@ -225,17 +225,17 @@ Please follow these instructions carefully and embody the role described above."
                 cmd.append(full_message)
 
             elif self.active_provider == "gemini":
-                cmd = [self.cli_path]
+                cmd = [self.cli_path, "--prompt"]
 
-                # Build conversation context (may need different format for Gemini)
+                # Build conversation context for Gemini
                 full_message = self.build_conversation_context(message)
 
-                # Add system prompt if enabled (Gemini CLI syntax may differ)
+                # For Gemini, we'll include system prompt in the message itself if enabled
                 if use_system_prompt:
                     system_prompt = self.get_system_prompt()
-                    cmd.extend(["--system", system_prompt])
+                    full_message = f"{system_prompt}\n\nUser: {full_message}"
 
-                # Add the message
+                # Add the message as prompt
                 cmd.append(full_message)
 
             else:
@@ -243,9 +243,9 @@ Please follow these instructions carefully and embody the role described above."
 
             print(f"Sending to {self.active_provider.title()}: {message[:100]}{'...' if len(message) > 100 else ''}")
             
-            # Execute Claude CLI command
+            # Execute CLI command
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
-            
+
             if result.returncode == 0:
                 response = result.stdout.strip()
                 # Store in conversation history
@@ -257,7 +257,7 @@ Please follow these instructions carefully and embody the role described above."
                 return response
             else:
                 error_msg = result.stderr.strip() if result.stderr else "Unknown error"
-                return f"Error from Claude CLI: {error_msg}"
+                return f"Error from {self.active_provider.title()} CLI: {error_msg}"
                 
         except subprocess.TimeoutExpired:
             return f"Error: {self.active_provider} CLI request timed out"
