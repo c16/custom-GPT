@@ -190,6 +190,8 @@ void ClaudeAgentGUI::setupInputArea() {
 }
 
 void ClaudeAgentGUI::setupConversationStarters() {
+    // Add starter_box_ to frame only once during initial setup
+    starters_frame_.add(starter_box_);
     refreshConversationStarters();
 }
 
@@ -204,7 +206,6 @@ void ClaudeAgentGUI::refreshConversationStarters() {
     if (!agent_) {
         auto label = Gtk::manage(new Gtk::Label("Agent not initialized"));
         starter_box_.pack_start(*label, Gtk::PACK_SHRINK, 2);
-        starters_frame_.add(starter_box_);
         show_all_children();
         return;
     }
@@ -224,7 +225,6 @@ void ClaudeAgentGUI::refreshConversationStarters() {
         starter_box_.pack_start(*label, Gtk::PACK_SHRINK, 2);
     }
 
-    starters_frame_.add(starter_box_);
     show_all_children();
 }
 
