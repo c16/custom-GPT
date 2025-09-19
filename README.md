@@ -1,6 +1,22 @@
 # Custom AI Agent for Claude CLI
 
-A Python application that creates a custom AI agent interface using the Claude CLI. This allows you to create personalized AI assistants with specific behaviors, instructions, and conversation styles.
+A multi-platform application that creates custom AI agent interfaces using the Claude CLI. Available in both Python (tkinter) and C++ (Gtkmm) implementations. This allows you to create personalized AI assistants with specific behaviors, instructions, and conversation styles.
+
+## Available Implementations
+
+### 🐍 Python Implementation
+- **Location**: [`python/`](python/) directory
+- **GUI Framework**: tkinter (cross-platform)
+- **Requirements**: Python 3.6+, tkinter
+- **Usage**: `python python/claude_agent_gui.py`
+
+### ⚡ C++ Implementation
+- **Location**: [`cpp/`](cpp/) directory
+- **GUI Framework**: Gtkmm 3.0 (Linux/Unix)
+- **Requirements**: C++17, Gtkmm 3.0 dev libraries
+- **Usage**: `./cpp/bin/ClaudeAgentGtk`
+
+Both implementations provide the same core functionality with their respective platform optimizations.
 
 ## Features
 
@@ -12,12 +28,43 @@ A Python application that creates a custom AI agent interface using the Claude C
 - 📊 **Conversation History**: Track and review past conversations
 - 🖥️ **Multiple Interfaces**: Command-line and GUI options
 - ⚡ **Claude CLI Integration**: Leverages the official Claude CLI for responses
+- 🔄 **Multi-CLI Support**: Support for both Claude CLI and Gemini CLI (C++ version)
+
+## Quick Start
+
+### Python Version
+```bash
+cd python/
+python claude_agent_gui.py
+```
+
+### C++ Version
+```bash
+cd cpp/
+make
+./bin/ClaudeAgentGtk
+```
 
 ## Requirements
 
-- Python 3.6 or higher
+### Common Requirements
 - Claude CLI installed and configured ([Installation Guide](https://docs.anthropic.com/en/docs/claude-cli))
-- No additional Python dependencies required (uses only standard library)
+- Git (for cloning the repository)
+
+### Python-Specific
+- Python 3.6 or higher
+- tkinter (usually included with Python)
+
+### C++-Specific
+- C++17 compatible compiler (g++, clang++)
+- Gtkmm 3.0 development libraries
+- pkg-config
+- CMake (optional, for CMake build)
+
+#### Installing C++ Dependencies (Ubuntu/Debian)
+```bash
+sudo apt install build-essential cmake pkg-config libgtkmm-3.0-dev
+```
 
 ## Installation
 
@@ -26,34 +73,19 @@ A Python application that creates a custom AI agent interface using the Claude C
    claude --version
    ```
 
-2. Clone or download this repository
-3. No additional installation required - uses only Python standard library
+2. Clone this repository:
+   ```bash
+   git clone <repository-url>
+   cd custom-agent
+   ```
 
-## Usage
-
-### Command-Line Interface
-
-#### Interactive Mode
-```bash
-python3 claude_agent.py
-```
-
-#### Single Query Mode
-```bash
-python3 claude_agent.py "What is Python?"
-```
-
-### GUI Interface
-
-```bash
-python3 claude_agent_gui.py
-```
-
-The GUI automatically falls back to an enhanced command-line interface if tkinter is not available.
+3. Choose your implementation:
+   - **Python**: Ready to use, no compilation needed
+   - **C++**: Requires compilation (see [`cpp/README.md`](cpp/README.md))
 
 ## Configuration
 
-The agent behavior is controlled by `agent_config.json`:
+Both implementations share the same configuration format in `agent_config.json`:
 
 ```json
 {
@@ -64,8 +96,7 @@ The agent behavior is controlled by `agent_config.json`:
     "How can I help you today?",
     "What would you like to work on?"
   ],
-  "max_tokens": 4000,
-  "temperature": 0.7
+  "conversation_memory": 10
 }
 ```
 
@@ -75,164 +106,85 @@ The agent behavior is controlled by `agent_config.json`:
 - **description**: A brief description shown to users
 - **instructions**: Detailed behavioral instructions (up to 5000 characters)
 - **conversation_starters**: Pre-defined prompts for users
-- **max_tokens**: Maximum response length
-- **temperature**: Response creativity (0.0-1.0)
+- **conversation_memory**: Number of previous messages to include in context
 
 ## File Structure
 
 ```
 custom-agent/
-├── claude_agent.py           # Core agent functionality
-├── claude_agent_gui.py       # GUI interface
-├── agent_config.json         # Agent configuration
-├── Claude.md                 # Template file
-└── README.md                 # This file
+├── python/                   # Python implementation
+│   ├── claude_agent.py           # Core agent functionality
+│   ├── claude_agent_gui.py       # tkinter GUI interface
+│   ├── custom_agent_creator.py   # Configuration creator tool
+│   ├── demo.py                   # Demo script
+│   └── README.md                 # Python-specific documentation
+├── cpp/                      # C++ implementation
+│   ├── include/                  # Header files
+│   ├── src/                      # Source files
+│   ├── CMakeLists.txt           # CMake build configuration
+│   ├── Makefile                 # Make build configuration
+│   └── README.md                # C++-specific documentation
+├── configs/                  # Shared configuration files
+├── agent_config.json         # Main agent configuration
+├── CHANGELOG.md             # Version history
+├── CONFIG_MANAGEMENT.md     # Configuration guide
+├── CONTRIBUTING.md          # Contribution guidelines
+└── README.md                # This file
 ```
 
-## Features in Detail
+## Implementation Comparison
 
-### Interactive Commands
+| Feature | Python | C++ |
+|---------|--------|-----|
+| **Performance** | Interpreted | Compiled (faster) |
+| **Memory Usage** | Higher | Lower |
+| **Startup Time** | Fast | Very fast |
+| **Platform Support** | Cross-platform | Linux/Unix (Gtkmm) |
+| **Dependencies** | Python + tkinter | C++17 + Gtkmm 3.0 |
+| **CLI Support** | Claude CLI only | Claude CLI + Gemini CLI |
+| **Logging** | Basic | Comprehensive multi-level |
+| **Threading** | Basic | Advanced with queue system |
+| **Build Process** | None required | Compilation required |
 
-While chatting with your agent, you can use these commands:
+## Advanced Features (C++ Version)
 
-- `quit` - Exit the application
-- `config` - Open configuration menu
-- `history` - View conversation history
+The C++ implementation includes additional features:
 
-### Configuration Menu
-
-The configuration menu allows you to:
-
-1. Edit agent name
-2. Edit description
-3. Edit instructions
-4. Manage conversation starters
-5. View current configuration
-6. Save configuration
-7. Reload configuration
-
-### GUI Features
-
-The GUI version includes:
-
-- **Chat Interface**: Clean conversation display
-- **Configuration Window**: Easy editing of agent settings
-- **History Viewer**: Browse past conversations
-- **Conversation Starters**: Click to use pre-defined prompts
-- **Real-time Responses**: Threaded communication with Claude CLI
+- **Comprehensive Logging**: Multi-level logging with file output and debug modes
+- **Dual CLI Support**: Automatic detection and switching between Claude CLI and Gemini CLI
+- **Advanced Threading**: Background message processing with response queues
+- **Enhanced Error Handling**: Detailed error reporting and recovery
+- **Configuration Management**: Advanced configuration loading and validation
 
 ## Creating Custom Agents
 
-### Example: Code Review Agent
+Both implementations support creating specialized agents. See the existing configuration files in the `configs/` directory for examples:
 
-```json
-{
-  "name": "Code Review Assistant",
-  "description": "Expert code reviewer specializing in Python, JavaScript, and best practices",
-  "instructions": "You are an expert code reviewer with years of experience in software development. When reviewing code:\n\n1. Look for bugs, security issues, and performance problems\n2. Check for code style and best practices\n3. Suggest improvements and optimizations\n4. Explain your reasoning clearly\n5. Be constructive and helpful in your feedback\n\nFocus on:\n- Code correctness and functionality\n- Security vulnerabilities\n- Performance optimizations\n- Code readability and maintainability\n- Best practices and design patterns",
-  "conversation_starters": [
-    "Please review this code for me",
-    "Can you check this function for bugs?",
-    "What improvements would you suggest?",
-    "Is this code secure and efficient?"
-  ]
-}
-```
-
-### Example: Learning Assistant
-
-```json
-{
-  "name": "Learning Buddy",
-  "description": "Patient tutor that helps explain complex topics step by step",
-  "instructions": "You are a patient and encouraging tutor. Your goal is to help users learn by:\n\n1. Breaking down complex topics into simple steps\n2. Using analogies and examples\n3. Asking questions to check understanding\n4. Providing encouragement and positive feedback\n5. Adapting explanations to the user's level\n\nAlways:\n- Be patient and supportive\n- Encourage questions\n- Provide clear, step-by-step explanations\n- Use real-world examples\n- Check for understanding before moving on",
-  "conversation_starters": [
-    "I need help understanding a concept",
-    "Can you explain this topic to me?",
-    "I'm struggling with this problem",
-    "How does this work?"
-  ]
-}
-```
+- **Code Review Agent**: `code_review_agent_config.json`
+- **Learning Assistant**: `learning_agent_config.json`
+- **Writing Coach**: `writing_agent_config.json`
 
 ## Troubleshooting
 
 ### Claude CLI Not Found
-
-If you get "Claude CLI not found" error:
-
 1. Install Claude CLI: `npm install -g @anthropic-ai/claude-cli`
 2. Ensure it's in your PATH
 3. Test with: `claude --version`
 
-### Configuration Issues
-
-- Check that `agent_config.json` is valid JSON
-- Ensure file permissions allow reading/writing
-- Use the built-in configuration menu to make changes
-
-### GUI Not Working
-
-The application automatically falls back to command-line if:
-- tkinter is not available
-- Display is not available (headless systems)
-
-## Advanced Usage
-
-### Custom System Prompts
-
-You can create sophisticated agents by crafting detailed instructions:
-
-```
-You are a [ROLE] with expertise in [DOMAIN].
-
-Your personality:
-- [TRAIT 1]
-- [TRAIT 2]
-- [TRAIT 3]
-
-Your responsibilities:
-1. [RESPONSIBILITY 1]
-2. [RESPONSIBILITY 2]
-3. [RESPONSIBILITY 3]
-
-When responding:
-- [GUIDELINE 1]
-- [GUIDELINE 2]
-- [GUIDELINE 3]
-
-Output format:
-- [FORMAT REQUIREMENT 1]
-- [FORMAT REQUIREMENT 2]
-```
-
-### Integration with Other Tools
-
-The agent can be integrated into workflows:
-
-```bash
-# Use in scripts
-python3 claude_agent.py "Analyze this log file"
-
-# Pipe input
-echo "Explain this error" | python3 claude_agent.py
-```
+### Implementation-Specific Issues
+- **Python**: See [`python/README.md`](python/README.md)
+- **C++**: See [`cpp/README.md`](cpp/README.md)
 
 ## Contributing
 
-This is a standalone tool designed for customization. Feel free to:
-
-- Modify the agent behavior
-- Add new features
-- Create specialized agent configurations
-- Integrate with your own tools
+Contributions are welcome! Please see [`CONTRIBUTING.md`](CONTRIBUTING.md) for guidelines.
 
 ## License
 
-This project is provided as-is for educational and personal use.
+This project is provided as-is for educational and personal use. See [`LICENSE`](LICENSE) for details.
 
 ## Support
 
-For Claude CLI issues, refer to the [official documentation](https://docs.anthropic.com/en/docs/claude-cli).
-
-For this tool, check the troubleshooting section above or modify the code to suit your needs.
+- For Claude CLI issues: [Official Claude CLI Documentation](https://docs.anthropic.com/en/docs/claude-cli)
+- For implementation-specific issues: Check the respective README files
+- For general issues: Check the troubleshooting sections or create an issue
