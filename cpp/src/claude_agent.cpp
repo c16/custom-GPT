@@ -10,10 +10,21 @@
 #include <unistd.h>
 
 ClaudeAgent::ClaudeAgent(const std::string& config_file, CliProvider cli_provider)
-    : config_file_(config_file)
-    , last_config_file_(".last_config")
-    , cli_provider_(cli_provider)
+    : cli_provider_(cli_provider)
     , active_provider_(CliProvider::AUTO) {
+
+    // Check for config directory environment variable or use default
+    const char* config_dir_env = std::getenv("CLAUDE_AGENT_CONFIG_DIR");
+    std::string config_dir = config_dir_env ? config_dir_env : "../configs";
+
+    // If config_file is just a filename, prepend the config directory
+    if (config_file.find('/') == std::string::npos && config_file[0] != '/') {
+        config_file_ = config_dir + "/" + config_file;
+    } else {
+        config_file_ = config_file;
+    }
+
+    last_config_file_ = config_dir + "/.last_config";
 
     LOG_INFO("ClaudeAgent constructor called with config_file=" + config_file);
     LOG_DEBUG("CLI provider: " + providerToString(cli_provider));

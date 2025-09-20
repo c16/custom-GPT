@@ -48,8 +48,6 @@ Thumbs.db
 
 # Project specific
 # Keep example configs but ignore user configs
-agent_config.json
-/configs/
 /exported_configs/
 /imports/
 
@@ -62,7 +60,6 @@ agent_config.json
 
 # Bundle exports (can be large)
 *_bundle.json
-all_configs_bundle.json
 
 # Generated Claude.md files (except templates)
 *_claude.md

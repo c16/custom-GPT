@@ -13,8 +13,16 @@ from pathlib import Path
 
 class ClaudeAgent:
     def __init__(self, config_file="agent_config.json", cli_provider="auto"):
-        self.config_file = config_file
-        self.last_config_file = ".last_config"  # File to store last used config path
+        # Check for config directory environment variable or use default
+        config_dir = os.environ.get('CLAUDE_AGENT_CONFIG_DIR', '../configs')
+
+        # If config_file is just a filename, prepend the config directory
+        if not os.path.sep in config_file and not os.path.isabs(config_file):
+            self.config_file = os.path.join(config_dir, config_file)
+        else:
+            self.config_file = config_file
+
+        self.last_config_file = os.path.join(config_dir, ".last_config")  # File to store last used config path
         self.cli_provider = cli_provider  # "claude", "gemini", or "auto"
         self.config = self.load_config()
         self.conversation_history = []
