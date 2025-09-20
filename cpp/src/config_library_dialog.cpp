@@ -1,4 +1,5 @@
 #include "config_library_dialog.h"
+#include "logger.h"
 #include <iostream>
 #include <filesystem>
 
@@ -203,6 +204,7 @@ void ConfigLibraryDialog::setupManagementTab() {
 }
 
 void ConfigLibraryDialog::showDialog() {
+    LOG_DEBUG("ConfigLibraryDialog::showDialog() called");
     refreshConfigList();
     current_label_.set_text("Name: " + agent_.getName());
     show();
@@ -218,31 +220,42 @@ void ConfigLibraryDialog::refreshConfigList() {
     const char* config_dir_env = std::getenv("CLAUDE_AGENT_CONFIG_DIR");
     std::string config_dir = config_dir_env ? config_dir_env : "../configs";
 
+    LOG_DEBUG("ConfigLibraryDialog: Scanning for configs in directory: " + config_dir);
+
     // Current directory (legacy support)
     for (const auto& entry : std::filesystem::directory_iterator(".")) {
         if (entry.path().extension() == ".json" &&
             entry.path().filename().string().find("_config") != std::string::npos) {
             config_files.push_back(entry.path());
+            LOG_DEBUG("Found legacy config: " + entry.path().string());
         }
     }
 
     // Configs directory (new location)
     if (std::filesystem::exists(config_dir)) {
+        LOG_DEBUG("Config directory exists: " + config_dir);
         for (const auto& entry : std::filesystem::directory_iterator(config_dir)) {
             if (entry.path().extension() == ".json") {
                 config_files.push_back(entry.path());
+                LOG_DEBUG("Found config: " + entry.path().string());
             }
         }
+    } else {
+        LOG_DEBUG("Config directory does not exist: " + config_dir);
     }
 
     // Legacy configs subdirectory fallback
     if (std::filesystem::exists("configs")) {
+        LOG_DEBUG("Legacy configs directory exists");
         for (const auto& entry : std::filesystem::directory_iterator("configs")) {
             if (entry.path().extension() == ".json") {
                 config_files.push_back(entry.path());
+                LOG_DEBUG("Found legacy fallback config: " + entry.path().string());
             }
         }
     }
+
+    LOG_DEBUG("Total config files found: " + std::to_string(config_files.size()));
 
     // Add to tree
     for (const auto& file : config_files) {
@@ -267,8 +280,10 @@ void ConfigLibraryDialog::refreshConfigList() {
             row[config_columns_.name] = name;
             row[config_columns_.description] = desc;
             row[config_columns_.filename] = file.filename().string();
+            LOG_DEBUG("Added config to tree: " + name + " (" + file.filename().string() + ")");
 
         } catch (const std::exception& e) {
+            LOG_DEBUG("Error parsing config file " + file.string() + ": " + e.what());
             auto row = *(config_store_->append());
             row[config_columns_.name] = "Error";
             row[config_columns_.description] = "Could not read: " + std::string(e.what());
