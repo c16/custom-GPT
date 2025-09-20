@@ -73,7 +73,9 @@ custom-agent/
 #### Testing
 ```bash
 cd cpp
-make clean && make           # Build
+make clean && make           # Build application
+make tests                   # Build test suite
+make run-tests              # Build and run all tests
 ./test_config_scan          # Test config scanning
 ./bin/ClaudeAgentGtk --help # Test application help
 ```
@@ -102,6 +104,8 @@ make clean && make           # Build
 ```bash
 ./launch-python.sh          # Test application launch
 python3 python/claude_agent.py --help  # Test CLI mode
+cd python && python3 test_claude_agent.py     # Run unit tests
+cd python && python3 test_claude_agent_gui.py # Run GUI tests
 ```
 
 #### Key Components
@@ -156,6 +160,9 @@ python3 python/claude_agent.py --help  # Test CLI mode
 
 ### Testing Checklist
 Before merging any feature branch:
+- [ ] **Automated Tests**: Run `./run-tests-all.sh` and ensure all tests pass
+- [ ] **Python Tests**: `./run-tests-python.sh` passes completely
+- [ ] **C++ Tests**: `./run-tests-cpp.sh` passes completely
 - [ ] Both Python and C++ versions launch successfully
 - [ ] Configuration library loads and displays all configs
 - [ ] Selected configurations load without errors
@@ -163,6 +170,31 @@ Before merging any feature branch:
 - [ ] No regression in existing functionality
 - [ ] Code follows project style guidelines
 - [ ] Commit messages are clear and descriptive
+
+### Test Suite
+The project includes comprehensive automated testing:
+
+#### Quick Test Commands
+```bash
+./run-tests-all.sh          # Run all tests (Python + C++)
+./run-tests-python.sh       # Run Python tests only
+./run-tests-cpp.sh          # Run C++ tests only
+```
+
+#### Test Coverage
+- **Configuration Management**: Loading, parsing, validation
+- **CLI Detection**: Claude/Gemini CLI discovery and fallback
+- **Core Functionality**: Message handling, conversation history
+- **Error Handling**: Invalid configs, missing files, network failures
+- **GUI Components**: Interface initialization and interaction (mocked)
+- **Path Resolution**: Environment variables and relative paths
+
+#### Test Documentation
+See [`TESTING.md`](TESTING.md) for detailed test documentation including:
+- Test file organization
+- Adding new tests
+- Troubleshooting test failures
+- CI/CD integration guidelines
 
 ### Release Process
 1. Ensure all features are merged to `main`
