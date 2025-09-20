@@ -305,9 +305,16 @@ void ConfigLibraryDialog::onLoadSelectedClicked() {
         std::string full_path;
 
         std::string filename_str = filename;
+
+        // Get config directory from environment or use default (same as refreshConfigList)
+        const char* config_dir_env = std::getenv("CLAUDE_AGENT_CONFIG_DIR");
+        std::string config_dir = config_dir_env ? config_dir_env : "../configs";
+
         if (std::filesystem::exists(filename_str)) {
             full_path = filename_str;
-        } else if (std::filesystem::exists("configs/" + filename_str)) {
+        } else if (std::filesystem::exists(config_dir + "/" + filename_str)) {
+            full_path = config_dir + "/" + filename_str;
+        } else if (std::filesystem::exists("configs/" + filename_str)) {  // Legacy fallback
             full_path = "configs/" + filename_str;
         }
 
