@@ -563,19 +563,23 @@ class ClaudeAgentGUI:
         # Clear existing items
         for item in self.config_tree.get_children():
             self.config_tree.delete(item)
-        
+
         # Collect config files
         from pathlib import Path
         import json
-        
+        import os
+
         config_files = []
-        
-        # Current directory
+
+        # Get config directory from environment or use default
+        config_dir = os.environ.get('CLAUDE_AGENT_CONFIG_DIR', '../configs')
+        configs_dir = Path(config_dir)
+
+        # Current directory (legacy support)
         for file in Path(".").glob("*_config.json"):
             config_files.append(file)
-        
-        # Configs subdirectory
-        configs_dir = Path("configs")
+
+        # Configs directory (new location)
         if configs_dir.exists():
             for file in configs_dir.glob("*.json"):
                 config_files.append(file)
@@ -599,17 +603,23 @@ class ClaudeAgentGUI:
         if not selection:
             messagebox.showwarning("No Selection", "Please select a configuration to load.")
             return
-        
+
         item = self.config_tree.item(selection[0])
         filename = item['values'][2]
-        
+
         # Find the full path
         from pathlib import Path
+        import os
         file_path = None
-        
+
+        # Get config directory from environment or use default
+        config_dir = os.environ.get('CLAUDE_AGENT_CONFIG_DIR', '../configs')
+
         if Path(filename).exists():
             file_path = Path(filename)
-        elif (Path("configs") / filename).exists():
+        elif (Path(config_dir) / filename).exists():
+            file_path = Path(config_dir) / filename
+        elif (Path("configs") / filename).exists():  # Legacy fallback
             file_path = Path("configs") / filename
         
         if file_path:

@@ -214,7 +214,11 @@ void ConfigLibraryDialog::refreshConfigList() {
     // Collect config files
     std::vector<std::filesystem::path> config_files;
 
-    // Current directory
+    // Get config directory from environment or use default
+    const char* config_dir_env = std::getenv("CLAUDE_AGENT_CONFIG_DIR");
+    std::string config_dir = config_dir_env ? config_dir_env : "../configs";
+
+    // Current directory (legacy support)
     for (const auto& entry : std::filesystem::directory_iterator(".")) {
         if (entry.path().extension() == ".json" &&
             entry.path().filename().string().find("_config") != std::string::npos) {
@@ -222,7 +226,16 @@ void ConfigLibraryDialog::refreshConfigList() {
         }
     }
 
-    // Configs subdirectory
+    // Configs directory (new location)
+    if (std::filesystem::exists(config_dir)) {
+        for (const auto& entry : std::filesystem::directory_iterator(config_dir)) {
+            if (entry.path().extension() == ".json") {
+                config_files.push_back(entry.path());
+            }
+        }
+    }
+
+    // Legacy configs subdirectory fallback
     if (std::filesystem::exists("configs")) {
         for (const auto& entry : std::filesystem::directory_iterator("configs")) {
             if (entry.path().extension() == ".json") {
