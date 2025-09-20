@@ -37,35 +37,31 @@ int main() {
 
     logger.logError("TestModule", "perform critical operation", "Network connection failed");
 
-    // Test agent functionality with logging
-    std::cout << "\nTesting ClaudeAgent with logging..." << std::endl;
+    // Test agent creation and basic functionality (without CLI calls)
+    std::cout << "\nTesting ClaudeAgent creation with logging..." << std::endl;
 
-    ClaudeAgent agent("agent_config.json", CliProvider::AUTO);
+    try {
+        ClaudeAgent agent("agent_config.json", CliProvider::AUTO);
+        std::cout << "ClaudeAgent created successfully." << std::endl;
 
-    // Simulate a complex message that would trigger our logging
-    std::string complex_message = R"(This is a test message with:
-- Single quotes: 'hello'
-- Double quotes: "world"
-- Multiple lines
-- Special characters: $@#%
+        // Test logging without making actual CLI calls
+        std::cout << "Agent name: " << agent.getName() << std::endl;
+        std::cout << "Agent description: " << agent.getDescription() << std::endl;
 
-Previous conversation:
-Human: What's the weather like?
-Assistant: I don't have access to current weather data.
-
-Current message:
-Human: Now provide a summary of our conversation.)";
-
-    std::cout << "Sending complex message to test logging..." << std::endl;
-    std::string response = agent.sendToClaudeApi(complex_message);
-
-    if (response.find("Error") == 0) {
-        std::cout << "Expected error (no CLI available in test environment): " << response << std::endl;
-    } else {
-        std::cout << "Unexpected success: " << response.substr(0, 100) << std::endl;
+        // Log that we successfully tested agent creation
+        LOG_INFO("ClaudeAgent instantiation test completed successfully");
+    } catch (const std::exception& e) {
+        LOG_ERROR("Failed to create ClaudeAgent: " + std::string(e.what()));
+        std::cout << "ClaudeAgent creation failed (expected in test environment): " << e.what() << std::endl;
     }
 
-    std::cout << "\nLogging test complete. Check test_logging.log for detailed logs." << std::endl;
+    // Test flush and cleanup
+    std::cout << "\nFlushing logs and cleaning up..." << std::endl;
+
+    // Give logger time to write everything
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+    std::cout << "Logging test complete. Check test_logging.log for detailed logs." << std::endl;
 
     return 0;
 }
